@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlipShip - AI Product Assessment</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #F4F9FD;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 50px;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+        }
+        .logo img {
+            height: 40px;
+        }
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+            padding: 0;
+        }
+        .nav-links li {
+            display: inline;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: black;
+            font-size: 16px;
+        }
+        .auth-buttons .login-btn,
+        .auth-buttons .signup-btn {
+        background-color: #58A6FF;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 16px; /* Ensure text is visible */
+        }
+
+        .signup-btn {
+            background-color: #58A6FF;
+            color: white;
+            border: none;
+        }
+        .progress-container {
+            width: 100%;
+            background: #eee;
+            height: 5px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            width: 25%;
+            height: 5px;
+            background: black;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            text-align: center;
+            padding: 50px 20px;
+        }
+        .step-text {
+            font-size: 14px;
+            color: #333;
+        }
+        .heading {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .description {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .input-box {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .back-btn,
+        .next-btn {
+            padding: 10px 20px;
+            border: 1px solid black;
+            background: white;
+            cursor: pointer;
+        }
+        .next-btn {
+            background: black;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="FlipShip Logo">
+        </div>
+        <ul class="nav-links">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Pricing</a></li>
+            <li><a href="#">Resources ▼</a></li>
+        </ul>
+        <div class="auth-buttons">
+            <button class="login-btn">Log in</button>
+            <button class="signup-btn">Sign up</button>
+        </div>
+    </nav>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <p class="step-text">Step 2/4</p>
+        <h1 class="heading">Chat with our AI to quickly assess the condition of your product.</h1>
+        <p class="description">
+            It will guide you through the process. Please provide details about the condition of your product so it can analyze its return eligibility.
+        </p>
+
+        <!-- Image Upload -->
+        <h2>Upload an Image of Your Product</h2>
+        <input type="file" id="imageInput" accept="image/*" onchange="previewAndUploadImage()">
+
+
+        <!-- Response Area -->
+        <div id="image-response" style="margin-top: 10px;"></div>
+
+        <!-- Input Box -->
+        <!-- Chat Interface -->
+        <div id="chat-container">
+            <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;"></div>
+            
+            <!-- User Input -->
+            <input type="text" id="user-input" class="input-box" placeholder="Describe the condition of your product">
+            
+            <!-- Send Button -->
+            <div class="button-container">
+                <button class="back-btn">Back</button>
+                <button class="next-btn" onclick="sendMessage()">Send</button>
+            </div>
+
+        </div>
+    </div>
+    <script>
+        async function sendMessage() {
+            let input = document.getElementById("user-input");
+            let message = input.value.trim();
+            if (message === "") return;
+    
+            let messagesDiv = document.getElementById("messages");
+            messagesDiv.innerHTML += `<div class='message user'>You: ${message}</div>`;
+            input.value = "";
+    
+            // Send message to backend
+            let response = await fetch("http://localhost:5001/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message })
+            });
+    
+            let data = await response.json();
+            messagesDiv.innerHTML += `<div class='message'>Bot: ${data.response}</div>`;
+        }
+
+        async function previewAndUploadImage() {
+            let fileInput = document.getElementById("imageInput");
+            let file = fileInput.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                appendImage(e.target.result);
+            };
+            reader.readAsDataURL(file);
+
+            let formData = new FormData();
+            formData.append("image", file);
+
+            try {
+                let response = await fetch("http://localhost:5001/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                let data = await response.json();
+                appendMessage("Bot", data.response, "bot");
+            } catch (error) {
+                appendMessage("Bot", "Error processing image.", "bot");
+            }
+        }
+        function appendMessage(sender, text, className) {
+                let messagesDiv = document.getElementById("messages");
+                let messageDiv = document.createElement("div");
+                messageDiv.className = `chat-message ${className}`;
+                messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            function appendImage(imageSrc) {
+                let messagesDiv = document.getElementById("messages");
+                let img = document.createElement("img");
+                img.src = imageSrc;
+                img.className = "uploaded-image";
+                messagesDiv.appendChild(img);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+
+    </script>
+
+</body>
+</html>
